@@ -42,10 +42,13 @@
         *   A success message is displayed (e.g., "Event submitted successfully! It will be reviewed by our team.").
         *   The user might be redirected to a confirmation page, their list of submitted events, or the home page.
 
-4.  **Verify Event in Supabase (Manual Check for Testers/Admins):**
-    *   **Action:** Access the Supabase Studio for the project.
-    *   **Action:** Navigate to the `events` table.
-    *   **Expected Result:**
+4.  **Verify Event in Supabase:**
+    *   **Action (using MCP Tools):** Call `mcp_supabase_list_tables` with `project_id` set to your Supabase project ID (e.g., "mhzcyixvauzvlbfjghba") and `schemas` set to `["public"]`.
+    *   **Action:** Examine the output for the `events` table. Note the `live_rows_estimate` before and after the event submission. An increase indicates a new row was likely added.
+    *   **Action (Manual Check via Supabase Studio):** For detailed confirmation of the row content:
+        *   Access the Supabase Studio for your project.
+        *   Navigate to the `events` table.
+    *   **Expected Result (from Supabase Studio inspection):**
         *   A new row exists in the `events` table corresponding to the submitted event details.
         *   The `title`, `description`, `event_date`, `category_id`, etc., match the submitted information.
         *   The `created_by` column matches the `user_id` of the logged-in user who submitted the event.

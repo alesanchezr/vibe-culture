@@ -37,5 +37,5 @@ export interface Event {
 
 // Helper type for Supabase client calls if you join categories
 export type EventWithCategory = Event & {
-  event_categories: { name: string } | null;
+  event_categories: EventCategory | null;
 };

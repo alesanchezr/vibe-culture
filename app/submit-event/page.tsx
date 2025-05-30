@@ -112,6 +112,9 @@ function SubmitEventForm() {
         created_by: user.id,
         is_approved: false, // Events require approval
         city: MVP_CITY, // Ensure city is set
+        // Convert empty time strings to null
+        start_time: formData.start_time || null,
+        end_time: formData.end_time || null,
       };
 
       const { error: submissionError } = await supabase.from('events').insert([submissionData]);

@@ -1,4 +1,4 @@
-# VibeCulture MVP TODOs
+# VibeCulture MVP TODOs and Checklist
 
 ## Phase 0: Initial Codebase Review & Deployment
 - [X] **0.1 Vercel Project Setup**

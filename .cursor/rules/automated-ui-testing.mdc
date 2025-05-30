@@ -1,0 +1,100 @@
+---
+description: 
+globs: memory-bank/automated-ui-test/*.md
+alwaysApply: false
+---
+# Automated UI Testing with Token-Based Authentication
+
+This document outlines the rules and procedures for conducting automated UI testing for the VibeCulture application, utilizing token-based authentication to streamline the process. This involves using Supabase as the database and browser interaction tools for simulating user actions.
+
+## Core Principles
+
+1.  **Fully Automated Token-Based Authentication:** To eliminate manual login steps in automated tests, we will use JWT access tokens passed via URL query parameters (`?token=YOUR_ACCESS_TOKEN`). These tokens can be generated automatically by scripts.
+2.  **Dedicated Test Users & Credentials in Environment Variables:** All automated tests should run under a dedicated test user account in Supabase.
+    *   A utility script `scripts/utils.js` containing a `loadEnvLocal` function is used by other scripts to load environment variables from `.env.local`.
+    *   A script `scripts/create-test-user.js` is available to ensure the test user (defined by `TEST_EMAIL` and `TEST_PASSWORD` in `.env.local`) exists in Supabase. This script requires `NEXT_PUBLIC_SUPABASE_URL` and the sensitive `SUPABASE_SERVICE_ROLE_KEY` to be set in `.env.local` for admin operations.
+    *   The credentials for this test user (`TEST_EMAIL`, `TEST_PASSWORD`), along with Supabase connection details (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` for token generation, and `SUPABASE_SERVICE_ROLE_KEY` for user creation), must be stored as environment variables in `.env.local` for local testing or CI/CD environment variables.
+3.  **Supabase for Data Verification:** Test assertions will often involve verifying data states in the Supabase database using Supabase MCP Server tools.
+4.  **Browser Tools for UI Interaction:** Browser automation tools will be used to simulate user navigation, form submissions, and other UI interactions.
+
+## Ensuring Test User Exists (Fully Automated)
+
+A Node.js script is available at `scripts/create-test-user.js` to ensure the test user exists in Supabase.
+
+**Prerequisites:**
+
+*   Ensure your environment (`.env.local` file or CI/CD environment variables) contains:
+    ```env
+    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+    SUPABASE_SERVICE_ROLE_KEY=your_actual_service_role_key 
+    TEST_EMAIL=your_test_user_email@example.com
+    TEST_PASSWORD=your_test_user_password
+    ```
+    (Replace placeholders with your actual Supabase URL, service role key, and test user credentials).
+
+**Steps to Ensure User Exists:**
+
+1.  Ensure the environment variables listed above are correctly set in `.env.local`.
+2.  From your project root, run the script:
+    ```bash
+    node scripts/create-test-user.js
+    ```
+3.  The script will automatically use the environment variables. If the user doesn't exist, it will attempt to create them. If the user already exists, it will confirm this.
+
+## Generating a Test User JWT Access Token (Fully Automated)
+
+A Node.js script is available at `scripts/get-test-token.js` to facilitate obtaining an access token for the test user.
+
+**Prerequisites:**
+
+*   Ensure the test user (specified by `TEST_EMAIL`) exists (you can run `scripts/create-test-user.js` first).
+*   Ensure your environment (`.env.local` file or CI/CD environment variables) contains:
+    ```env
+    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_actual_anon_key 
+    TEST_EMAIL=your_test_user_email@example.com
+    TEST_PASSWORD=your_test_user_password
+    ```
+    (Replace placeholders with your actual Supabase URL, anon key, and test user credentials).
+
+**Steps to Generate Token:**
+
+1.  Ensure the environment variables listed above are correctly set in `.env.local`.
+2.  From your project root, run the script:
+    ```bash
+    node scripts/get-test-token.js
+    ```
+3.  The script will automatically use the environment variables to authenticate and will output an `Access Token` to the console. This output can be captured by other scripts or CI processes.
+
+## Using the Token in Automated Tests
+
+When an automated test needs to simulate an authenticated user:
+
+1.  **Ensure User Exists:** Run `node scripts/create-test-user.js`.
+2.  **Obtain the Token:** Execute `node scripts/get-test-token.js` and capture its output. *Note: These tokens are typically short-lived, so a new token might be needed for each test run or session.*
+3.  **Construct the URL:** Append the captured token as a query parameter to the target URL. For example, to access the profile page:
+    `http://localhost:3000/profile?token=CAPTURED_ACCESS_TOKEN`
+4.  **Navigate:** The browser automation tool should navigate to this constructed URL. The `AuthProvider` in the application is designed to detect this token, authenticate the session with Supabase, and then remove the token from the URL.
+
+## Example Test Flow (Conceptual for Automation)
+
+1.  **Setup (Automated):**
+    *   A test runner script first executes `node scripts/create-test-user.js`.
+    *   Then, it executes `node scripts/get-test-token.js` and stores the output (the access token).
+2.  **Test Action (e.g., Submit a New Event):**
+    *   Browser tool is launched and navigates to `http://localhost:3000/submit-event?token=STORED_ACCESS_TOKEN`.
+    *   Browser tool fills out the event submission form.
+    *   Browser tool clicks the "Submit" button.
+3.  **Verification (Automated):**
+    *   **UI:** Browser tool checks for a success message or redirection.
+    *   **Database (Supabase):** Use Supabase MCP server tools to check for the event.
+4.  **Teardown (Automated, Optional):**
+    *   Automated script deletes any test data created in Supabase.
+
+## Considerations
+
+*   **Token Expiration:** For long-running test suites, tokens might expire. Ensure your test strategy accounts for this, perhaps by generating a new token per test or per logical group of tests.
+*   **Security of Credentials:** Test user credentials (`TEST_EMAIL`, `TEST_PASSWORD`), the Supabase anon key, and especially the `SUPABASE_SERVICE_ROLE_KEY` should be managed securely, especially in CI/CD environments, using secrets management features provided by the CI/CD platform.
+*   **Test Environment Isolation:** Always run automated tests that modify data against a dedicated testing or staging Supabase environment, not the production database.
+
+This fully automated approach to test user management and token generation is crucial for efficient and reliable CI/CD pipelines and automated testing practices.

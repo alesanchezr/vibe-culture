@@ -1,23 +1,6 @@
 const path = require('path');
 const fs = require('fs');
-
-// Function to load .env.local
-function loadEnvLocal() {
-  const envPath = path.resolve(process.cwd(), '.env.local');
-  if (fs.existsSync(envPath)) {
-    const envFileContent = fs.readFileSync(envPath, 'utf8');
-    envFileContent.split('\n').forEach(line => {
-      const [key, ...valueParts] = line.split('=');
-      const value = valueParts.join('=').trim();
-      if (key && value) {
-        // Remove surrounding quotes if any
-        process.env[key.trim()] = value.replace(/^['"]|['"]$/g, '');
-      }
-    });
-  } else {
-    console.warn('.env.local file not found. Please ensure it exists and contains the required environment variables.');
-  }
-}
+const { loadEnvLocal } = require('./utils');
 
 loadEnvLocal();
 
