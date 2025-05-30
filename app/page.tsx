@@ -35,7 +35,7 @@ function isThisWeekend(dateStr: string): boolean {
 }
 
 export default async function Home() {
-  const supabase = createSupabaseServerClient()
+  const supabase = await createSupabaseServerClient()
   let allEvents: EventWithCategory[] = []
   let fetchError: string | null = null
 

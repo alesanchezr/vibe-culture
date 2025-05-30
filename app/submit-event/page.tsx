@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, FormEvent, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -30,7 +30,7 @@ interface EventFormData {
 
 const MVP_CITY = 'Miami'; // Fetched from plan or env variable ideally
 
-export default function SubmitEventPage() {
+function SubmitEventForm() {
   const { user, session, loading: authLoading } = useAuth();
   const router = useRouter();
   const [categories, setCategories] = useState<EventCategory[]>([]);
@@ -235,5 +235,17 @@ export default function SubmitEventPage() {
         </button>
       </form>
     </div>
+  );
+}
+
+export default function SubmitEventPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh', color: 'white', backgroundColor: '#121212' }}>
+        <p>Loading...</p>
+      </div>
+    }>
+      <SubmitEventForm />
+    </Suspense>
   );
 } 

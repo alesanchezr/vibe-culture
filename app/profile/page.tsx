@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '@/components/providers/AuthProvider'; // Corrected path
@@ -15,7 +15,7 @@ interface EventCategory {
   name: string;
 }
 
-export default function ProfilePage() {
+function ProfileForm() {
   const { user, session, loading: authLoading } = useAuth();
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -207,5 +207,17 @@ export default function ProfilePage() {
 
       {/* Removed sections for Saved Events, Past Events, and old category selection UI */}
     </div>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh', color: 'white', backgroundColor: '#121212' }}>
+        <p>Loading profile...</p>
+      </div>
+    }>
+      <ProfileForm />
+    </Suspense>
   );
 }

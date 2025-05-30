@@ -3,7 +3,7 @@ import type { EventWithCategory, EventCategory } from "@/lib/types";
 import DiscoverEventsClient from "@/components/discover-events-client"; // New client component
 
 export default async function DiscoverPage() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   let initialEvents: EventWithCategory[] = [];
   let categories: EventCategory[] = [];
   let fetchError: string | null = null;

@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,13 +17,13 @@ import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { mockEvents } from "@/lib/mock-data"
 
-export default function SubmitEventPage() {
+function SubmitEventForm() {
   const router = useRouter()
   const [date, setDate] = useState<Date>()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
 
-  const categories = Array.from(new Set(mockEvents.map((event) => event.category)))
+  const categories = ["Art", "Music", "Film", "Food", "Dance", "Literature", "Workshop", "Theater", "Festival"]
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -272,5 +272,22 @@ export default function SubmitEventPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function SubmitEventPage() {
+  return (
+    <Suspense fallback={
+      <div className="container px-4 py-8 md:px-6 md:py-12">
+        <div className="mx-auto max-w-2xl">
+          <div className="flex flex-col gap-4 mb-8">
+            <h1 className="text-3xl font-bold tracking-tight md:text-4xl">Submit an Event</h1>
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </div>
+      </div>
+    }>
+      <SubmitEventForm />
+    </Suspense>
   )
 }

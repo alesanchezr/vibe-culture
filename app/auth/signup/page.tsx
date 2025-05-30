@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabaseClient';
 
-export default function SignupPage() {
+function SignupForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -96,5 +96,18 @@ export default function SignupPage() {
       </form>
       <p style={{marginTop: '10px'}}>Already have an account? <a href="/auth/login" style={{color: '#0070f3'}}>Login</a></p>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px', border: '1px solid #333', borderRadius: '8px', backgroundColor: '#1a1a1a', color: 'white' }}>
+        <h1 style={{ textAlign: 'center', marginBottom: '20px' }}>Sign Up</h1>
+        <p style={{ textAlign: 'center' }}>Loading...</p>
+      </div>
+    }>
+      <SignupForm />
+    </Suspense>
   );
 } 

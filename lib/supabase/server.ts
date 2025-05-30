@@ -1,8 +1,8 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-export function createSupabaseServerClient() {
-  const cookieStore = cookies()
+export async function createSupabaseServerClient() {
+  const cookieStore = await cookies()
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,12 +13,20 @@ export function createSupabaseServerClient() {
           return cookieStore.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-          // This should work in Server Components/Route Handlers
-          cookieStore.set(name, value, options)
+          try {
+            cookieStore.set(name, value, options)
+          } catch (error) {
+            // This can fail in read-only contexts like Server Components
+            // The error is expected and can be ignored
+          }
         },
         remove(name: string, options: CookieOptions) {
-          // This should work in Server Components/Route Handlers
-          cookieStore.delete(name, options)
+          try {
+            cookieStore.delete(name)
+          } catch (error) {
+            // This can fail in read-only contexts like Server Components
+            // The error is expected and can be ignored
+          }
         },
       },
     }
