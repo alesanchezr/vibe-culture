@@ -1,236 +1,211 @@
 "use client"
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { mockEvents } from "@/lib/mock-data"
-import EventCard from "@/components/event-card"
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '../../lib/supabaseClient';
+import { useAuth } from '@/components/providers/AuthProvider'; // Corrected path
+
+interface UserProfile {
+  full_name: string | null;
+  selected_city: string | null;
+}
+
+interface EventCategory {
+  id: number;
+  name: string;
+}
 
 export default function ProfilePage() {
-  const [savedEvents, setSavedEvents] = useState(mockEvents.slice(0, 4))
-  const [pastEvents, setPastEvents] = useState(mockEvents.slice(4, 6))
+  const { user, session, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [fullName, setFullName] = useState('');
+  const [allCategories, setAllCategories] = useState<EventCategory[]>([]);
+  const [userInterests, setUserInterests] = useState<number[]>([]);
+  const [isLoading, setIsLoading] = useState(true); // Combined loading state for all initial fetches
+  const [isUpdating, setIsUpdating] = useState(false); // Separate state for update operation
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Mock user preferences
-  const [preferences, setPreferences] = useState({
-    categories: ["Music", "Art", "Theater"],
-    locations: ["Downtown", "Midtown"],
-    notifications: {
-      email: true,
-      browser: false,
-    },
-  })
+  useEffect(() => {
+    if (!authLoading && !session) {
+      router.push('/auth/login');
+    }
+  }, [session, authLoading, router]);
 
-  const handleRemoveSavedEvent = (eventId: number) => {
-    setSavedEvents(savedEvents.filter((event) => event.id !== eventId))
+  useEffect(() => {
+    if (user && session) { // Ensure user and session are available
+      const fetchProfileAndCategories = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+          const { data: profileData, error: profileError } = await supabase
+            .from('user_profiles')
+            .select('full_name, selected_city')
+            .eq('user_id', user.id)
+            .single();
+
+          if (profileError) {
+            // It's possible a profile doesn't exist yet if the trigger failed or was added later
+            if (profileError.code === 'PGRST116') { // PGRST116: "Fetched result not found (bro)" - means no row found
+              console.warn('User profile not found, user might need to complete it.');
+              // Potentially set a state to indicate profile needs creation/completion
+            } else {
+              throw profileError;
+            }
+          }
+          if (profileData) {
+            setProfile(profileData);
+            setFullName(profileData.full_name || '');
+          }
+
+          const { data: categoriesData, error: categoriesError } = await supabase
+            .from('event_categories')
+            .select('id, name');
+          if (categoriesError) throw categoriesError;
+          setAllCategories(categoriesData || []);
+
+          const { data: interestsData, error: interestsError } = await supabase
+            .from('user_interests')
+            .select('category_id')
+            .eq('user_id', user.id);
+          if (interestsError) throw interestsError;
+          setUserInterests((interestsData || []).map(interest => interest.category_id));
+
+        } catch (err: any) {
+          console.error("Error fetching profile data:", err);
+          setError(err.message || 'Failed to load profile data.');
+        }
+        setIsLoading(false);
+      };
+      fetchProfileAndCategories();
+    }
+  }, [user, session]); // Added session to dependency array
+
+  const handleUpdateProfile = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!user) return;
+    setError(null);
+    setSuccessMessage(null);
+    setIsUpdating(true);
+
+    try {
+      const { error: profileUpdateError } = await supabase
+        .from('user_profiles')
+        .update({ full_name: fullName })
+        .eq('user_id', user.id);
+      if (profileUpdateError) throw profileUpdateError;
+
+      // Efficiently update interests: delete all then re-insert selected ones.
+      // This is simpler for MVP than diffing. For larger scale, diffing would be better.
+      const { error: deleteError } = await supabase
+        .from('user_interests')
+        .delete()
+        .eq('user_id', user.id);
+      if (deleteError) throw deleteError;
+
+      if (userInterests.length > 0) {
+        const newInterests = userInterests.map(categoryId => ({
+          user_id: user.id,
+          category_id: categoryId,
+        }));
+        const { error: insertError } = await supabase
+          .from('user_interests')
+          .insert(newInterests);
+        if (insertError) throw insertError;
+      }
+      
+      setSuccessMessage("Profile updated successfully!");
+      if(profile) setProfile({...profile, full_name: fullName}); // Update local state immediately
+
+    } catch (err: any) {
+      console.error("Error updating profile:", err);
+      setError(err.message || 'Failed to update profile.');
+    }
+    setIsUpdating(false);
+  };
+
+  const handleInterestChange = (categoryId: number) => {
+    setUserInterests(prev => 
+      prev.includes(categoryId) 
+        ? prev.filter(id => id !== categoryId) 
+        : [...prev, categoryId]
+    );
+  };
+
+  if (authLoading || isLoading || !session) {
+    return (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh', color: 'white', backgroundColor: '#121212' }}>
+            <p>Loading profile...</p>
+        </div>
+    );
   }
 
-  const categories = ["Music", "Art", "Theater", "Dance", "Film", "Food", "Literature", "Festival", "Workshop"]
-
   return (
-    <div className="container px-4 py-8 md:px-6 md:py-12">
-      <div className="flex flex-col gap-8">
-        <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
-          <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16">
-              <AvatarImage src="/placeholder.svg" alt="User" />
-              <AvatarFallback>U</AvatarFallback>
-            </Avatar>
-            <div>
-              <h1 className="text-2xl font-bold">User Profile</h1>
-              <p className="text-muted-foreground">user@example.com</p>
-            </div>
-          </div>
-          <Button>Edit Profile</Button>
+    <div style={{ maxWidth: '600px', margin: '50px auto', padding: '30px', border: '1px solid #333', borderRadius: '8px', backgroundColor: '#1a1a1a', color: 'white' }}>
+      <h1 style={{ textAlign: 'center', marginBottom: '30px', fontSize: '2em' }}>Your Profile</h1>
+      
+      {error && <p style={{ color: '#ff4d4d', marginBottom: '15px', textAlign: 'center', padding: '10px', backgroundColor: '#402020', borderRadius: '4px' }}>Error: {error}</p>}
+      {successMessage && <p style={{ color: '#4dff4d', marginBottom: '15px', textAlign: 'center', padding: '10px', backgroundColor: '#204020', borderRadius: '4px' }}>{successMessage}</p>}
+      
+      <form onSubmit={handleUpdateProfile}>
+        <div style={{ marginBottom: '20px' }}>
+          <label htmlFor="email" style={{ display: 'block', marginBottom: '8px', fontSize: '0.9em', color: '#aaa' }}>Email</label>
+          <input
+            type="email"
+            id="email"
+            value={user?.email || ''}
+            disabled
+            style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #555', backgroundColor: '#2a2a2a', color: '#ccc', cursor: 'not-allowed' }}
+          />
         </div>
 
-        <Tabs defaultValue="saved" className="w-full">
-          <TabsList className="grid w-full md:w-auto grid-cols-3">
-            <TabsTrigger value="saved">Saved Events</TabsTrigger>
-            <TabsTrigger value="past">Past Events</TabsTrigger>
-            <TabsTrigger value="preferences">Preferences</TabsTrigger>
-          </TabsList>
+        <div style={{ marginBottom: '20px' }}>
+          <label htmlFor="fullName" style={{ display: 'block', marginBottom: '8px', fontSize: '0.9em', color: '#aaa' }}>Full Name</label>
+          <input
+            type="text"
+            id="fullName"
+            value={fullName}
+            placeholder="Enter your full name"
+            onChange={(e) => setFullName(e.target.value)}
+            style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #555', backgroundColor: '#2a2a2a', color: 'white' }}
+          />
+        </div>
 
-          <TabsContent value="saved" className="mt-6">
-            <div className="grid gap-6">
-              <h2 className="text-xl font-semibold">Saved Events</h2>
-              {savedEvents.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                  {savedEvents.map((event) => (
-                    <div key={event.id} className="relative group">
-                      <EventCard event={event} />
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => handleRemoveSavedEvent(event.id)}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <Card>
-                  <CardContent className="py-8 text-center">
-                    <p className="text-muted-foreground">You haven't saved any events yet.</p>
-                    <Button asChild className="mt-4">
-                      <a href="/discover">Discover Events</a>
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          </TabsContent>
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9em', color: '#aaa' }}>Selected City (MVP)</label>
+          <input
+            type="text"
+            value={profile?.selected_city || (isLoading ? 'Loading...' : 'Not set')}
+            disabled
+            style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #555', backgroundColor: '#2a2a2a', color: '#ccc', cursor: 'not-allowed' }}
+          />
+        </div>
 
-          <TabsContent value="past" className="mt-6">
-            <div className="grid gap-6">
-              <h2 className="text-xl font-semibold">Past Events</h2>
-              {pastEvents.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                  {pastEvents.map((event) => (
-                    <EventCard key={event.id} event={event} />
-                  ))}
-                </div>
-              ) : (
-                <Card>
-                  <CardContent className="py-8 text-center">
-                    <p className="text-muted-foreground">You haven't attended any events yet.</p>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          </TabsContent>
+        <div style={{ marginBottom: '30px' }}>
+          <label style={{ display: 'block', marginBottom: '15px', fontSize: '1.1em', color: '#ccc' }}>Your Interests</label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '10px' }}>
+            {allCategories.length > 0 ? allCategories.map(category => (
+              <div key={category.id} style={{ display: 'flex', alignItems: 'center' }}>
+                <input 
+                  type="checkbox" 
+                  id={`category-${category.id}`}
+                  checked={userInterests.includes(category.id)}
+                  onChange={() => handleInterestChange(category.id)}
+                  style={{ marginRight: '8px', accentColor: '#0070f3', transform: 'scale(1.1)' }}
+                />
+                <label htmlFor={`category-${category.id}`} style={{ fontSize: '0.95em' }}>{category.name}</label>
+              </div>
+            )) : <p style={{color: '#aaa'}}>{isLoading ? 'Loading categories...': 'No categories available. Admin needs to add them.'}</p>}
+          </div>
+        </div>
 
-          <TabsContent value="preferences" className="mt-6">
-            <div className="grid gap-8 max-w-2xl">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Interests</CardTitle>
-                  <CardDescription>
-                    Select the types of events you're interested in to get personalized recommendations.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4">
-                    <div>
-                      <h3 className="mb-4 text-sm font-medium">Event Categories</h3>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        {categories.map((category) => (
-                          <div key={category} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`category-${category}`}
-                              checked={preferences.categories.includes(category)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setPreferences({
-                                    ...preferences,
-                                    categories: [...preferences.categories, category],
-                                  })
-                                } else {
-                                  setPreferences({
-                                    ...preferences,
-                                    categories: preferences.categories.filter((c) => c !== category),
-                                  })
-                                }
-                              }}
-                            />
-                            <Label htmlFor={`category-${category}`}>{category}</Label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+        <button type="submit" disabled={isUpdating} style={{ width: '100%', padding: '12px', backgroundColor: '#0070f3', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '1em', opacity: isUpdating ? 0.7 : 1 }}>
+          {isUpdating ? 'Updating Profile...' : 'Save Changes'}
+        </button>
+      </form>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Location Preferences</CardTitle>
-                  <CardDescription>Select your preferred areas to discover nearby events.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4">
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                      {["Downtown", "Midtown", "Uptown", "West Side", "East Side", "Suburbs"].map((location) => (
-                        <div key={location} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`location-${location}`}
-                            checked={preferences.locations.includes(location)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setPreferences({
-                                  ...preferences,
-                                  locations: [...preferences.locations, location],
-                                })
-                              } else {
-                                setPreferences({
-                                  ...preferences,
-                                  locations: preferences.locations.filter((l) => l !== location),
-                                })
-                              }
-                            }}
-                          />
-                          <Label htmlFor={`location-${location}`}>{location}</Label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Notification Settings</CardTitle>
-                  <CardDescription>Manage how you receive updates about events.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="email-notifications"
-                        checked={preferences.notifications.email}
-                        onCheckedChange={(checked) => {
-                          setPreferences({
-                            ...preferences,
-                            notifications: {
-                              ...preferences.notifications,
-                              email: checked as boolean,
-                            },
-                          })
-                        }}
-                      />
-                      <Label htmlFor="email-notifications">Email notifications</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="browser-notifications"
-                        checked={preferences.notifications.browser}
-                        onCheckedChange={(checked) => {
-                          setPreferences({
-                            ...preferences,
-                            notifications: {
-                              ...preferences.notifications,
-                              browser: checked as boolean,
-                            },
-                          })
-                        }}
-                      />
-                      <Label htmlFor="browser-notifications">Browser notifications</Label>
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button>Save Preferences</Button>
-                </CardFooter>
-              </Card>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </div>
+      {/* Removed sections for Saved Events, Past Events, and old category selection UI */}
     </div>
-  )
+  );
 }

@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Search, Menu, X } from "lucide-react"
@@ -16,11 +16,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useAuth } from "@/components/providers/AuthProvider"
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const pathname = usePathname()
-  const [isLoggedIn, setIsLoggedIn] = useState(false) // Mock authentication state
+  const router = useRouter()
+  const { user, signOut, loading } = useAuth()
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen)
@@ -28,13 +30,31 @@ export default function Header() {
 
   const navItems = [
     { name: "Home", path: "/" },
-    { name: "Discover", path: "/discover" },
-    { name: "Submit Event", path: "/submit" },
+    { name: "Events", path: "/events" },
+    { name: "Submit Event", path: "/submit-event" },
   ]
 
-  // Mock login/logout functionality
-  const handleAuth = () => {
-    setIsLoggedIn(!isLoggedIn)
+  const handleLogout = async () => {
+    await signOut()
+    router.push('/auth/login')
+    router.refresh()
+  }
+
+  if (loading) {
+    return (
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-16 items-center justify-between px-4 md:px-6">
+          <div className="flex items-center gap-2">
+            <Link href="/" className="flex items-center gap-2">
+              <span className="text-xl font-bold tracking-tight">VibeCulture</span>
+            </Link>
+          </div>
+          <div className="flex items-center gap-4">
+            <p>Loading user...</p>
+          </div>
+        </div>
+      </header>
+    )
   }
 
   return (
@@ -68,36 +88,39 @@ export default function Header() {
             <Input type="search" placeholder="Search events..." className="pl-8 w-full md:w-[200px] lg:w-[300px]" />
           </form>
 
-          {isLoggedIn ? (
+          {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src="/placeholder.svg" alt="User" />
-                    <AvatarFallback>U</AvatarFallback>
+                    <AvatarImage src="/placeholder-user.jpg" alt={user.email || 'User'} />
+                    <AvatarFallback>{user.email ? user.email[0].toUpperCase() : 'U'}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">User</p>
-                    <p className="text-xs leading-none text-muted-foreground">user@example.com</p>
+                    <p className="text-sm font-medium leading-none">{user.email}</p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/profile">Profile</Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/saved">Saved Events</Link>
-                </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleAuth}>Log out</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button onClick={handleAuth}>Sign In</Button>
+            <div className="flex items-center gap-2">
+              <Button asChild variant="outline">
+                <Link href="/auth/login">Login</Link>
+              </Button>
+              <Button asChild>
+                <Link href="/auth/signup">Sign Up</Link>
+              </Button>
+            </div>
           )}
 
           <Button variant="ghost" size="icon" className="md:hidden" onClick={toggleMenu}>
@@ -128,6 +151,12 @@ export default function Header() {
                   {item.name}
                 </Link>
               ))}
+              {!user && (
+                <>
+                  <Link href="/auth/login" className={cn("flex items-center gap-2 text-sm font-medium p-2 rounded-md hover:bg-accent", pathname === '/auth/login' ? "bg-accent" : "")} onClick={() => setIsMenuOpen(false)}>Login</Link>
+                  <Link href="/auth/signup" className={cn("flex items-center gap-2 text-sm font-medium p-2 rounded-md hover:bg-accent", pathname === '/auth/signup' ? "bg-accent" : "")} onClick={() => setIsMenuOpen(false)}>Sign Up</Link>
+                </>
+              )}
             </nav>
           </div>
         </div>

@@ -1,0 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Tu run this application you can do:
+
+vercel dev  --listen=3001

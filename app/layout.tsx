@@ -4,6 +4,7 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import Header from "@/components/header"
 import { ThemeProvider } from "@/components/theme-provider"
+import { AuthProvider } from "../components/providers/AuthProvider"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -22,26 +23,28 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <Header />
-          <main className="min-h-screen">{children}</main>
-          <footer className="py-6 border-t">
-            <div className="container px-4 md:px-6">
-              <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
-                <p className="text-sm text-muted-foreground">© 2024 VibeCulture. All rights reserved.</p>
-                <div className="flex items-center gap-4">
-                  <a href="#" className="text-sm text-muted-foreground hover:underline">
-                    Terms
-                  </a>
-                  <a href="#" className="text-sm text-muted-foreground hover:underline">
-                    Privacy
-                  </a>
-                  <a href="#" className="text-sm text-muted-foreground hover:underline">
-                    Contact
-                  </a>
+          <AuthProvider>
+            <Header />
+            <main className="min-h-screen">{children}</main>
+            <footer className="py-6 border-t">
+              <div className="container px-4 md:px-6">
+                <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
+                  <p className="text-sm text-muted-foreground">© 2024 VibeCulture. All rights reserved.</p>
+                  <div className="flex items-center gap-4">
+                    <a href="#" className="text-sm text-muted-foreground hover:underline">
+                      Terms
+                    </a>
+                    <a href="#" className="text-sm text-muted-foreground hover:underline">
+                      Privacy
+                    </a>
+                    <a href="#" className="text-sm text-muted-foreground hover:underline">
+                      Contact
+                    </a>
+                  </div>
                 </div>
               </div>
-            </div>
-          </footer>
+            </footer>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

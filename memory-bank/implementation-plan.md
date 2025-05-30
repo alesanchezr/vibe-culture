@@ -1,5 +1,9 @@
 ## VibeCulture MVP Implementation Plan
 
+Project id: mhzcyixvauzvlbfjghba
+City: miami
+Production url: https://vibe-culture-alesanchezr-alejandro-sanchezs-projects-c67b22b3.vercel.app?_vercel_share=HidPSblIMuXHTtTMtBSWaHByGGhPA6xd
+
 Below are the actionable steps to build the VibeCulture MVP, focusing on a hyper-local cultural event discovery platform for one city initially. I will be handling Supabase setup (schema, RLS, initial data) using Supabase MCP tools.
 
 ### Phase 0: Initial Codebase Review & Deployment
@@ -77,6 +81,8 @@ Below are the actionable steps to build the VibeCulture MVP, focusing on a hyper
             CREATE POLICY "Users can view their own submitted events" ON events FOR SELECT USING (auth.uid() = created_by);
             -- Admin/moderator update policy will be handled separately or refined later
             ```
+
+            
 *   **1.5 Basic App Shell & Home Page (Frontend Task - You):**
     *   Ensure your main layout (`app/layout.tsx`) includes a header/navigation area and a main content area.
     *   `app/page.tsx` (Home Page): Display a welcome message and a section to browse upcoming events.
@@ -95,7 +101,7 @@ Below are the actionable steps to build the VibeCulture MVP, focusing on a hyper
 
 ### Phase 2: User Authentication & Profile Schema
 
-*   **2.1 Authentication Setup (Frontend Task - You):**
+*   **2.1 Authentication Setup (Frontend Task - Gemini):**
     *   Auth UI: `app/auth/signup/page.tsx`, `app/auth/login/page.tsx`. Use client components for forms.
     *   User Session Management: `AuthProvider` (e.g., `components/providers/AuthProvider.tsx`) wrapping `app/layout.tsx`.
     *   Logout functionality in navigation.
@@ -143,14 +149,29 @@ Below are the actionable steps to build the VibeCulture MVP, focusing on a hyper
             ALTER TABLE user_interests ENABLE ROW LEVEL SECURITY;
             CREATE POLICY "Users can manage their own interests" ON user_interests FOR ALL USING (auth.uid() = user_id);
             ```
-*   **2.4 User Profile Page (`app/profile/page.tsx`) (Frontend Task - You):**
+*   **2.4 User Profile Page (`app/profile/page.tsx`) (Frontend Task - Gemini):**
     *   Protected route.
     *   Display current user's `full_name` and `selected_city`.
     *   Allow users to select/update their interests (checkboxes/multi-select for `event_categories`). Store selections in `user_interests` table.
-*   **2.5 Protected Routes Implementation (Frontend Task - You):**
+*   **2.5 Protected Routes Implementation (Frontend Task - Gemini):**
     *   Use Next.js Middleware (`middleware.ts`) to protect routes like `/profile` and `/submit-event`.
 *   **Action: Deploy User Authentication & Profile features to Vercel.**
 *   **Stop and wait for me to deploy and test these features in production before proceeding.**
+
+### Phase 2.5: Token-Based Authentication via Query String
+
+*   **2.5.1 Token Authentication Logic (Frontend Task - You):**
+    *   Implement logic to check for a `token` query string parameter on specific routes or globally.
+    *   If a token is present, attempt to authenticate the user with Supabase using this token (e.g., `supabase.auth.setSession({ access_token: token, refresh_token: token })` or a dedicated Supabase function if available for this flow).
+    *   Handle successful authentication by redirecting to the appropriate page or updating the application state.
+    *   Handle failed authentication (e.g., invalid token) gracefully, perhaps by ignoring the token or showing an error message.
+*   **2.5.2 Secure Token Handling (Considerations - You):**
+    *   Ensure tokens are short-lived if they are intended for one-time use (e.g., magic links).
+    *   Advise on the security implications of passing tokens in URLs and recommend best practices (e.g., using HTTPS, considering token expiration).
+*   **2.5.3 Vercel Deployment (Token Auth):**
+    *   Trigger a deployment.
+*   **Action: Deploy Token Authentication feature to Vercel.**
+*   **Stop and wait for me to deploy and test this feature in production before proceeding.**
 
 ### Phase 3: Event Submission & Moderation Flow
 
